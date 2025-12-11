@@ -1,10 +1,8 @@
 import os
-import asyncio
 from flask import Flask, request
 from aiogram import Bot, Dispatcher, types
 import bot_logic
 import requests
-from threading import Thread
 
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
@@ -26,22 +24,12 @@ print("🔧 Обработчики зарегистрированы")
 
 app = Flask(__name__)
 
-# Создаём постоянный event loop в отдельном потоке
-loop = asyncio.new_event_loop()
-
-def start_loop():
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
-
-thread = Thread(target=start_loop, daemon=True)
-thread.start()
-
 @app.route("/", methods=["GET"])
 def index():
     return "Bot is running"
 
 @app.route(WEBHOOK_PATH, methods=["POST"])
-def telegram_webhook():
+async def telegram_webhook():
     print("📨 Получен webhook запрос")
     try:
         data = request.get_json(force=True)
@@ -50,11 +38,8 @@ def telegram_webhook():
         update = types.Update(**data)
         print(f"✅ Update обработан: {update.update_id}")
         
-        # Запускаем в постоянном loop
-        asyncio.run_coroutine_threadsafe(
-            dp.feed_update(bot, update),
-            loop
-        )
+        # Обрабатываем напрямую async
+        await dp.feed_update(bot, update)
         
         return {"ok": True}
     except Exception as e:
