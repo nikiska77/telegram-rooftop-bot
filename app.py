@@ -12,23 +12,27 @@ if not TOKEN:
 
 WEBHOOK_PATH = f"/webhook/{TOKEN}"
 
-bot = Bot(token=TOKEN, parse_mode="HTML")
+try:
+    from aiogram.client.default import DefaultBotProperties
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+except ImportError:
+    bot = Bot(token=TOKEN, parse_mode="HTML")
+
 dp = Dispatcher()
 
+print("🔧 Начинаем регистрацию обработчиков...")
 bot_logic.register_handlers(dp)
 print("🔧 Обработчики зарегистрированы")
-print(f"📋 Количество обработчиков: {len(dp.message.handlers)}")
+
 app = Flask(__name__)
 
-# Создаём постоянный event loop
+# Создаём постоянный event loop в отдельном потоке
 loop = asyncio.new_event_loop()
 
 def start_loop():
-    """Запускаем event loop в отдельном потоке"""
     asyncio.set_event_loop(loop)
     loop.run_forever()
 
-# Запускаем loop в фоне
 thread = Thread(target=start_loop, daemon=True)
 thread.start()
 
@@ -46,15 +50,12 @@ def telegram_webhook():
         update = types.Update(**data)
         print(f"✅ Update обработан: {update.update_id}")
         
-        # Запускаем обработку в фоне через Thread
-        from threading import Thread
-        def process_update():
-            asyncio.run(dp.feed_update(bot, update))
+        # Запускаем в постоянном loop
+        asyncio.run_coroutine_threadsafe(
+            dp.feed_update(bot, update),
+            loop
+        )
         
-        thread = Thread(target=process_update)
-        thread.start()
-        
-        # Сразу возвращаем ответ Telegram
         return {"ok": True}
     except Exception as e:
         print(f"❌ Ошибка в webhook: {e}")
@@ -67,14 +68,13 @@ def status():
     return {"status": "ok"}
 
 def set_webhook_sync():
-    """Устанавливает webhook синхронно"""
     repl_url = os.environ.get("REPL_URL")
     if not repl_url:
-        print("⚠️ REPL_URL не задан, webhook не установлен")
+        print("⚠️ REPL_URL не задан")
         return
-
+    
     webhook_url = f"{repl_url}/webhook/{TOKEN}"
-
+    
     try:
         response = requests.post(
             f"https://api.telegram.org/bot{TOKEN}/setWebhook",
@@ -90,6 +90,6 @@ def set_webhook_sync():
 
 if __name__ == "__main__":
     set_webhook_sync()
-
+    
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
