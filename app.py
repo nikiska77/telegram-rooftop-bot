@@ -16,7 +16,8 @@ bot = Bot(token=TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
 bot_logic.register_handlers(dp)
-
+print("🔧 Обработчики зарегистрированы")
+print(f"📋 Количество обработчиков: {len(dp.message.handlers)}")
 app = Flask(__name__)
 
 # Создаём постоянный event loop
