@@ -2,7 +2,6 @@ import os
 import asyncio
 from flask import Flask, request
 from aiogram import Bot, Dispatcher, types
-from aiogram.client.default import DefaultBotProperties
 import bot_logic
 import requests
 from threading import Thread
@@ -13,7 +12,7 @@ if not TOKEN:
 
 WEBHOOK_PATH = f"/webhook/{TOKEN}"
 
-bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+bot = Bot(token=TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
 bot_logic.register_handlers(dp)
