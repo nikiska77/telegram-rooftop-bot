@@ -42,16 +42,19 @@ def telegram_webhook():
     try:
         data = request.get_json(force=True)
         print(f"📦 Данные: {data}")
-
+        
         update = types.Update(**data)
         print(f"✅ Update обработан: {update.update_id}")
-
-        # Запускаем в постоянном loop
-        asyncio.run_coroutine_threadsafe(
-            dp.feed_update(bot, update),
-            loop
-        )
-
+        
+        # Запускаем обработку в фоне через Thread
+        from threading import Thread
+        def process_update():
+            asyncio.run(dp.feed_update(bot, update))
+        
+        thread = Thread(target=process_update)
+        thread.start()
+        
+        # Сразу возвращаем ответ Telegram
         return {"ok": True}
     except Exception as e:
         print(f"❌ Ошибка в webhook: {e}")
