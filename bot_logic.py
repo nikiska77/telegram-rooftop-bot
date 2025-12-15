@@ -10,6 +10,7 @@ from aiogram.filters import Command
 # файлы, функции load_json/save_json, etc. — вставь сюда свою реализацию
 PARTICIPANTS_FILE = "participants.json"
 EVENT_FILE = "event.json"
+SETTINGS_FILE = "settings.json"
 
 TOKEN = os.getenv("TOKEN")
 if TOKEN is None:
@@ -56,6 +57,18 @@ def load_event():
 
 def save_event(data):
     save_json(EVENT_FILE, data)
+
+def load_settings():
+    default = {"max_seats": MAX_SEATS}
+    return load_json(SETTINGS_FILE, default)
+
+def save_settings(data):
+    save_json(SETTINGS_FILE, data)
+
+def get_max_seats():
+    settings = load_settings()
+    return settings.get("max_seats", MAX_SEATS)
+    
 # ----------------------------
 # Клавиатуры
 # ----------------------------
@@ -105,7 +118,7 @@ def register_handlers(dp):
     
             await message.answer(
                 f"{event_text}"
-                f"Всего мест: {MAX_SEATS}\n"
+                f"Всего мест: {get_max_seats()}\n"
                 f"Осталось: {remaining}\n\n"
                 f"Нажмите кнопку ниже 👇",
                 reply_markup=get_main_keyboard()
@@ -135,7 +148,7 @@ def register_handlers(dp):
             user = callback.from_user
             participants = load_participants()
 
-            if len(participants) >= MAX_SEATS:
+            if len(participants) >= get_max_seats():
                 await callback.answer("Все места заняты ❌", show_alert=True)
                 return
 
@@ -153,7 +166,7 @@ def register_handlers(dp):
             participants[str(user.id)] = user.full_name or user.username or "NoName"
             save_participants(participants)
 
-            remaining = MAX_SEATS - len(participants)
+            remaining = get_max_seats() - len(participants)
 
             await callback.answer("Вы записаны! ✔️", show_alert=True)
 
@@ -190,7 +203,7 @@ def register_handlers(dp):
             del participants[str(user.id)]
             save_participants(participants)
     
-            remaining = MAX_SEATS - len(participants)
+            remaining = get_max_seats() - len(participants)
     
             await callback.answer("Запись отменена.", show_alert=True)
             await callback.message.answer(
@@ -292,7 +305,7 @@ def register_handlers(dp):
             return
 
         participants = load_participants()
-        remaining = MAX_SEATS - len(participants)
+        remaining = get_max_seats() - len(participants)
 
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -305,10 +318,10 @@ def register_handlers(dp):
             f"📅 {event['date']}\n"
             f"⏰ {event['time']}\n"
             f"📍 {event['location']}\n\n"
-            f"Всего мест: {MAX_SEATS}\n"
+            f"Всего мест: {get_max_seats()}\n"
             f"Свободно: {remaining}"
         )
-
+        
         await message.answer(
             text,
             reply_markup=keyboard
@@ -341,3 +354,82 @@ def register_handlers(dp):
         except Exception as e:
             print("Error in clear_all:", e)
             await message.answer("Ошибка при очистке.")
+
+
+    # ----------------------------
+    # /set_seats количество
+    # ----------------------------
+
+    @dp.message(Command("set_seats"))
+    async def set_seats_handler(message: types.Message):
+        if message.from_user.id != ADMIN_ID:
+            await message.answer("Нет прав.")
+            return
+    
+        try:
+            _, count = message.text.split(" ", 1)
+            count = int(count)
+            
+            if count < 1 or count > 1000:
+                await message.answer("Количество мест должно быть от 1 до 1000")
+                return
+            
+            settings = load_settings()
+            settings["max_seats"] = count
+            save_settings(settings)
+            
+            await message.answer(f"✅ Максимальное количество мест изменено на {count}")
+        
+        except (ValueError, IndexError):
+            await message.answer(
+                "Формат:\n"
+                "/set_seats 15\n\n"
+                "Пример: /set_seats 20"
+            )
+
+
+    # ----------------------------
+    # /broadcast текст сообщения
+    # ----------------------------
+
+    @dp.message(Command("broadcast"))
+    async def broadcast_handler(message: types.Message):
+        if message.from_user.id != ADMIN_ID:
+            await message.answer("Нет прав.")
+            return
+        
+        try:
+            _, text = message.text.split(" ", 1)
+        except ValueError:
+            await message.answer(
+                "Формат:\n"
+                "/broadcast Текст сообщения\n\n"
+                "Пример:\n"
+                "/broadcast Напоминаем, событие завтра в 19:00!"
+            )
+            return
+        
+        participants = load_participants()
+        
+        if not participants:
+            await message.answer("Нет записавшихся участников")
+            return
+        
+        success = 0
+        failed = 0
+        
+        await message.answer(f"Начинаю рассылку {len(participants)} участникам...")
+        
+        for user_id in participants.keys():
+            try:
+                await bot.send_message(chat_id=int(user_id), text=text)
+                success += 1
+            except Exception as e:
+                print(f"Ошибка отправки {user_id}: {e}")
+                failed += 1
+        
+        await message.answer(
+            f"✅ Рассылка завершена\n"
+            f"Успешно: {success}\n"
+            f"Ошибок: {failed}"
+        )
