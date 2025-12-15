@@ -98,7 +98,7 @@ def register_handlers(dp):
         print(f"👤 Имя: {message.from_user.full_name}")
         try:
             participants = load_participants()
-            remaining = 10 - len(participants)
+            remaining = get_max_seats() - len(participants)
     
             event = load_event()
             event_text = ""
