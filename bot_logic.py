@@ -422,7 +422,7 @@ def register_handlers(dp):
         
         for user_id in participants.keys():
             try:
-                await bot.send_message(chat_id=int(user_id), text=text)
+                await message.bot.send_message(chat_id=int(user_id), text=text)
                 success += 1
             except Exception as e:
                 print(f"Ошибка отправки {user_id}: {e}")
