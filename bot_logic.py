@@ -37,9 +37,17 @@ def load_participants():
         new = {}
         for item in data:
             if isinstance(item, dict) and "id" in item and "name" in item:
-                new[str(item["id"])] = item["name"]
+                new[str(item["id"])] = {
+                    "name": item.get("name", "Unknown"),
+                    "username": item.get("username"),
+                    "user_id": item["id"]
+                }
             else:
-                new[str(item)] = "Unknown"
+                new[str(item)] = {
+                    "name": "Unknown",
+                    "username": None,
+                    "user_id": item
+                }
         save_participants(new)
         return new
     if not isinstance(data, dict):
@@ -163,7 +171,11 @@ def register_handlers(dp):
                 return
                 
 
-            participants[str(user.id)] = user.full_name or user.username or "NoName"
+            participants[str(user.id)] = {
+            "name": user.full_name or "NoName",
+            "username": user.username,  
+            "user_id": user.id
+        }
             save_participants(participants)
 
             remaining = get_max_seats() - len(participants)
@@ -233,9 +245,25 @@ def register_handlers(dp):
             return
     
         text = "Список участников:\n\n"
-        for user_id, name in participants.items():
-            text += f"• {name} (ID: {user_id})\n"
-    
+        #for user_id, name in participants.items():
+        #    text += f"• {name} (ID: {user_id})\n"
+
+        for user_id, user_data in participants.items():
+        # Проверяем формат данных (старый или новый)
+        if isinstance(user_data, dict):
+            name = user_data.get("name", "Без имени")
+            username = user_data.get("username")
+            
+            if username:
+                # Если есть username - показываем его (можно сразу нажать и написать)
+                text += f"• {name} | @{username} | ID: {user_id}\n"
+            else:
+                # Если нет username - только ID
+                text += f"• {name} | ❌ нет username | ID: {user_id}\n"
+        else:
+            # Старый формат (только имя)
+            text += f"• {user_data} | ❌ нет username | ID: {user_id}\n"
+        
         await message.answer(text)
 
     # ----------------------------
