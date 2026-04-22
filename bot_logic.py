@@ -250,19 +250,19 @@ def register_handlers(dp):
 
         for user_id, user_data in participants.items():
         # Проверяем формат данных (старый или новый)
-        if isinstance(user_data, dict):
-            name = user_data.get("name", "Без имени")
-            username = user_data.get("username")
-            
-            if username:
-                # Если есть username - показываем его (можно сразу нажать и написать)
-                text += f"• {name} | @{username} | ID: {user_id}\n"
+            if isinstance(user_data, dict):
+                name = user_data.get("name", "Без имени")
+                username = user_data.get("username")
+                
+                if username:
+                    # Если есть username - показываем его (можно сразу нажать и написать)
+                    text += f"• {name} | @{username} | ID: {user_id}\n"
+                else:
+                    # Если нет username - только ID
+                    text += f"• {name} | ❌ нет username | ID: {user_id}\n"
             else:
-                # Если нет username - только ID
-                text += f"• {name} | ❌ нет username | ID: {user_id}\n"
-        else:
-            # Старый формат (только имя)
-            text += f"• {user_data} | ❌ нет username | ID: {user_id}\n"
+                # Старый формат (только имя)
+                text += f"• {user_data} | ❌ нет username | ID: {user_id}\n"
         
         await message.answer(text)
 
