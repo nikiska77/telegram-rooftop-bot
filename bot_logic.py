@@ -126,7 +126,6 @@ def register_handlers(dp):
     
             await message.answer(
                 f"{event_text}"
-                f"Всего мест: {get_max_seats()}\n"
                 f"Осталось: {remaining}\n\n"
                 f"Нажмите кнопку ниже 👇",
                 reply_markup=get_main_keyboard()
